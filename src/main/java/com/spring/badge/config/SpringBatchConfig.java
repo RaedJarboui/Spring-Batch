@@ -14,6 +14,8 @@ import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 
 import com.spring.badge.entity.Customer;
 import com.spring.badge.repository.CustomerRepository;
@@ -76,14 +78,19 @@ public class SpringBatchConfig {
 	@Bean
 	public Step step1() {
 		return stepBuilderFactory.get("csv-step").<Customer, Customer>chunk(10) // nb lines to handle
-				.reader(reader()).processor(processor()).writer(writer())
-				// .taskExecutor(taskExecutor())
-				.build();
+				.reader(reader()).processor(processor()).writer(writer()).taskExecutor(taskExecutor()).build();
 	}
 
 	@Bean
 	public Job runJob() {
 		return jobBuilderFactory.get("importCustomers").flow(step1()).end().build();
 
+	}
+
+	@Bean
+	public TaskExecutor taskExecutor() { // add taskexecutor because by default spring badge is synchronous
+		SimpleAsyncTaskExecutor asyncTaskExecutor = new SimpleAsyncTaskExecutor();
+		asyncTaskExecutor.setConcurrencyLimit(10); // 10 threads executing parallely
+		return asyncTaskExecutor;
 	}
 }
