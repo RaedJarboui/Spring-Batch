@@ -1,8 +1,10 @@
 package com.spring.badge.config;
 
+import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.item.data.RepositoryItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
@@ -41,13 +43,13 @@ public class SpringBatchConfig {
 	private LineMapper<Customer> lineMapper() {
 		DefaultLineMapper<Customer> lineMapper = new DefaultLineMapper<>();
 
-		DelimitedLineTokenizer lineTokenizer = new DelimitedLineTokenizer();
+		DelimitedLineTokenizer lineTokenizer = new DelimitedLineTokenizer(); // extract values from source
 		lineTokenizer.setDelimiter(","); // commas delimiters between datas
 		lineTokenizer.setStrict(false);
 		lineTokenizer.setNames("id", "firstName", "lastName", "email", "gender", "contactNo", "country", "dob"); // header
 																													// columns
 
-		BeanWrapperFieldSetMapper<Customer> fieldSetMapper = new BeanWrapperFieldSetMapper<>();
+		BeanWrapperFieldSetMapper<Customer> fieldSetMapper = new BeanWrapperFieldSetMapper<>(); // map values to object
 		fieldSetMapper.setTargetType(Customer.class);
 
 		lineMapper.setLineTokenizer(lineTokenizer);
@@ -55,4 +57,27 @@ public class SpringBatchConfig {
 		return lineMapper;
 
 	}
+
+	@Bean
+	public CustomerProcessor processor() { // process data : operation to be executed between after item reader and
+											// before item writer
+		return new CustomerProcessor();
+	}
+
+	@Bean
+	public RepositoryItemWriter<Customer> writer() { // itemWriter to save customer objects into DB
+		RepositoryItemWriter<Customer> writer = new RepositoryItemWriter<>();
+		writer.setRepository(customerRepository);
+		writer.setMethodName("save");
+		return writer;
+	}
+
+	@Bean
+	public Step step1() {
+		return stepBuilderFactory.get("csv-step").<Customer, Customer>chunk(10).reader(reader()).processor(processor())
+				.writer(writer())
+				// .taskExecutor(taskExecutor())
+				.build();
+	}
+
 }
