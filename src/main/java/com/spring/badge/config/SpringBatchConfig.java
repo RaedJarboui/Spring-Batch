@@ -1,5 +1,6 @@
 package com.spring.badge.config;
 
+import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
@@ -74,10 +75,15 @@ public class SpringBatchConfig {
 
 	@Bean
 	public Step step1() {
-		return stepBuilderFactory.get("csv-step").<Customer, Customer>chunk(10).reader(reader()).processor(processor())
-				.writer(writer())
+		return stepBuilderFactory.get("csv-step").<Customer, Customer>chunk(10) // nb lines to handle
+				.reader(reader()).processor(processor()).writer(writer())
 				// .taskExecutor(taskExecutor())
 				.build();
 	}
 
+	@Bean
+	public Job runJob() {
+		return jobBuilderFactory.get("importCustomers").flow(step1()).end().build();
+
+	}
 }
